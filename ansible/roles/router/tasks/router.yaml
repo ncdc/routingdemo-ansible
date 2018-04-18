@@ -1,0 +1,59 @@
+- name: Copy dnsmasq.conf for NetworkManager
+  copy:
+    src: files/dnsmasq.conf
+    dest: /etc/NetworkManager/conf.d/dnsmasq.conf
+
+- name: Copy backend.conf for dnsmasq
+  copy:
+    src: files/backend.conf
+    dest: /etc/NetworkManager/dnsmasq.d/backend.conf
+
+- name: Restart NetworkManager
+  systemd:
+    name: NetworkManager
+    state: restarted
+
+- name: Retrieve cluster coredns ConfigMap
+  become: false
+  command: kubectl -n kube-system get configmap/coredns -o jsonpath='{.data.Corefile}'
+  register: router_corefile
+
+- name: Update cluster coredns ConfigMap to use Parallels for upstream DNS and our custom zones
+  become: false
+  command: kubectl apply -f -
+  args:
+    stdin: "{{ lookup('file', 'files/Corefile.yaml') }}"
+
+- name: Check if zones ConfigMap exists
+  become: false
+  command: kubectl -n kube-system get configmap/coredns-zones
+  register: router_get_coredns_zones_configmap
+
+- name: Create zones ConfigMap
+  become: false
+  command: kubectl -n kube-system create configmap coredns-zones
+  when: router_get_coredns_zones_configmap.rc != 0
+
+- name: Check for coredns-zones volume in coredns deployment
+  become: false
+  shell: kubectl -n kube-system get deploy/coredns -o json | jq -e '.spec.template.spec.volumes[] | select(.name == "coredns-zones")'
+  register: router_get_coredns_zones_volume
+
+- name: Add coredns-zones volume to coredns deployment
+  become: false
+  shell: kubectl -n kube-system get deploy/coredns -o json | jq '.spec.template.spec.volumes += [{"name":"coredns-zones","configMap":{"name":"coredns-zones"}}]' | kubectl apply -f -
+  when: router_get_coredns_zones_volume.rc != 0
+
+- name: Check for coredns-zones volumeMount in coredns deployment
+  become: false
+  shell: kubectl -n kube-system get deploy/coredns -o json | jq -e '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "coredns-zones")'
+  register: router_get_coredns_zones_volume_mount
+
+- name: Add coredns-zones volumeMount to coredns deployment
+  become: false
+  shell: kubectl -n kube-system get deploy/coredns -o json | jq '.spec.template.spec.containers[0].volumeMounts += [{"name":"coredns-zones","mountPath":"/zones"}]' | kubectl apply -f -
+  when: router_get_coredns_zones_volume_mount.rc != 0
+
+- name: Restart cluster coredns pod
+  become: false
+  command: kubectl -n kube-system delete pod -l k8s-app=kube-dns

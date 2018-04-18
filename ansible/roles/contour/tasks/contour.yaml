@@ -1,0 +1,19 @@
+- name: Deploy contour
+  become: false
+  command: kubectl apply -f -
+  args:
+    stdin: "{{ lookup('file', 'files/contour.yaml') }}"
+
+- name: Forward ports 80,443 to contour
+  iptables:
+    table: nat
+    chain: PREROUTING
+    protocol: tcp
+    match: tcp
+    destination_port: "{{ item }}"
+    jump: REDIRECT
+    to_ports: "{{ 8000 + item }}"
+    comment: Redirect tcp/80 to tcp/8080
+  with_items:
+    - 80
+    - 443

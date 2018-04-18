@@ -1,0 +1,4 @@
+- import_tasks: check_vars.yaml
+  tags: router,router:check,check
+- import_tasks: router.yaml
+  tags: router

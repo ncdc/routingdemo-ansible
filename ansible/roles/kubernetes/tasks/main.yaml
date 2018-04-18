@@ -1,0 +1,4 @@
+- import_tasks: check_vars.yaml
+  tags: kubernetes,kubernetes:check,check
+- import_tasks: kubernetes.yaml
+  tags: kubernetes

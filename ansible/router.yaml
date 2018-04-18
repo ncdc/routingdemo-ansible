@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - import_role:
+      name: kubernetes
+  - import_role:
+      name: router
+  - import_role:
+      name: contour

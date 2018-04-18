@@ -1,0 +1,7 @@
+---
+- name: Check that required variables are set
+  fail: msg="{{ item }} is not defined"
+  when: item not in vars
+  with_items:
+    - kubernetes_version
+    - kubernetes_cni_version

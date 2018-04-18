@@ -1,0 +1,4 @@
+- import_tasks: check_vars.yaml
+  tags: contour,contour:check,check
+- import_tasks: contour.yaml
+  tags: contour

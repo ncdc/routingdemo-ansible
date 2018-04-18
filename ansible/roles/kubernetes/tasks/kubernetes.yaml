@@ -1,0 +1,89 @@
+---
+- name: Add Kubernetes yum repo
+  yum_repository:
+    name: kubernetes
+    description: kubernetes
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    enabled: yes
+    gpgcheck: yes
+
+- name: Install prerequisite packages
+  dnf:
+    name:
+    - libselinux-python
+    - kubectl-{{ kubernetes_version }}
+    - kubeadm-{{ kubernetes_version }}
+    - kubelet-{{ kubernetes_version }}
+    - kubernetes-cni-{{ kubernetes_cni_version }}
+
+- name: Set selinux to permissive
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: Configure kubelet to allow swap
+  copy:
+    src: files/00-no-swap.conf
+    dest: /etc/systemd/system/kubelet.service.d/00-no-swap.conf
+
+- name: Reload systemd
+  systemd: daemon_reload=yes
+
+- name: Start and enable kubelet
+  systemd:
+    name: kubelet
+    state: restarted
+    enabled: yes
+
+- name: Reset kubeadm
+  command: "kubeadm reset"
+
+- name: Upload kubeadm config file
+  copy:
+    src: files/kubeadm.yaml
+    dest: /tmp/kubeadm.yaml
+
+- name: Initialize kubeadm
+  command: "kubeadm init --config /tmp/kubeadm.yaml --ignore-preflight-errors Swap"
+
+- name: Create dir for kube config
+  become: false
+  file:
+    path: "~/.kube"
+    state: directory
+
+- name: Copy kubeadm kube config
+  copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0755
+    remote_src: True
+
+- name: Copy kubeconfig to host
+  become: false
+  fetch:
+    src: "/home/{{ ansible_user }}/.kube/config"
+    dest: "~/.kube/{{ inventory_hostname }}"
+    flat: yes
+  tags:
+    - kubernetes:kubeconfig
+
+- name: Copy calico yaml
+  copy:
+    src: files/calico.yaml
+    dest: /tmp/calico.yaml
+
+- name: Install calico
+  become: false
+  command: kubectl apply -f /tmp/calico.yaml
+
+- name: Get node name
+  become: false
+  command: kubectl get nodes -o jsonpath='{.items[0].metadata.name}'
+  register: node_name
+
+- name: Remove master NoSchedule taint
+  become: false
+  command: kubectl taint nodes {{ node_name.stdout }} node-role.kubernetes.io/master:NoSchedule-
