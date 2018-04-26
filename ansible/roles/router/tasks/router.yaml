@@ -28,6 +28,7 @@
   become: false
   command: kubectl -n kube-system get configmap/coredns-zones
   register: router_get_coredns_zones_configmap
+  ignore_errors: yes
 
 - name: Create zones ConfigMap
   become: false
@@ -38,6 +39,7 @@
   become: false
   shell: kubectl -n kube-system get deploy/coredns -o json | jq -e '.spec.template.spec.volumes[] | select(.name == "coredns-zones")'
   register: router_get_coredns_zones_volume
+  ignore_errors: yes
 
 - name: Add coredns-zones volume to coredns deployment
   become: false
@@ -48,6 +50,7 @@
   become: false
   shell: kubectl -n kube-system get deploy/coredns -o json | jq -e '.spec.template.spec.containers[0].volumeMounts[] | select(.name == "coredns-zones")'
   register: router_get_coredns_zones_volume_mount
+  ignore_errors: yes
 
 - name: Add coredns-zones volumeMount to coredns deployment
   become: false

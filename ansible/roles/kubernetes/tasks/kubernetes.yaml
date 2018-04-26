@@ -1,16 +1,23 @@
 ---
-- name: Add Kubernetes yum repo
-  yum_repository:
-    name: kubernetes
-    description: kubernetes
-    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
-    enabled: yes
-    gpgcheck: yes
+# Commented out for an offline demo
+# - name: Add Kubernetes yum repo
+#   yum_repository:
+#     name: kubernetes
+#     description: kubernetes
+#     baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+#     enabled: yes
+#     gpgcheck: yes
+#     gpgkey:
+#       - https://packages.cloud.google.com/yum/doc/yum-key.gpg
+#       - https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+- name: Clean dnf metadata
+  command: dnf clean all
 
 - name: Install prerequisite packages
   dnf:
+    disablerepo: '*'
+    enablerepo: kubernetes-offline
     name:
-    - libselinux-python
     - kubectl-{{ kubernetes_version }}
     - kubeadm-{{ kubernetes_version }}
     - kubelet-{{ kubernetes_version }}
@@ -39,8 +46,8 @@
   command: "kubeadm reset"
 
 - name: Upload kubeadm config file
-  copy:
-    src: files/kubeadm.yaml
+  template:
+    src: templates/kubeadm.yaml
     dest: /tmp/kubeadm.yaml
 
 - name: Initialize kubeadm

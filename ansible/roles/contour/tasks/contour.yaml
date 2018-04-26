@@ -6,6 +6,7 @@
 
 - name: Forward ports 80,443 to contour
   iptables:
+    in_interface: eth0
     table: nat
     chain: PREROUTING
     protocol: tcp
@@ -13,7 +14,19 @@
     destination_port: "{{ item }}"
     jump: REDIRECT
     to_ports: "{{ 8000 + item }}"
-    comment: Redirect tcp/80 to tcp/8080
+    comment: Redirect tcp/{{ item }} to tcp/{{ 8000 + item }}
   with_items:
     - 80
     - 443
+  
+- name: Forward port 9001 to contour
+  iptables:
+    in_interface: eth0
+    table: nat
+    chain: PREROUTING
+    protocol: tcp
+    match: tcp
+    destination_port: 9001
+    jump: DNAT
+    to_destination: 127.0.0.1:9001
+    comment: Redirect tcp/9001

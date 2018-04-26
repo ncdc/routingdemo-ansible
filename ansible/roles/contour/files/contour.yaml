@@ -37,6 +37,7 @@ spec:
       hostNetwork: true
       containers:
       - image: docker.io/envoyproxy/envoy-alpine:v1.6.0
+        imagePullPolicy: IfNotPresent
         name: envoy
         ports:
         - containerPort: 8080
@@ -48,14 +49,14 @@ spec:
         volumeMounts:
         - name: contour-config
           mountPath: /config
-      - image: gcr.io/heptio-images/contour:master
-        imagePullPolicy: Always
+      - image: gcr.io/andy-heptio/contour:kubecon
+        imagePullPolicy: IfNotPresent
         name: contour
         command: ["contour"]
         args: ["serve", "--incluster"]
       initContainers:
-      - image: gcr.io/heptio-images/contour:master
-        imagePullPolicy: Always
+      - image: gcr.io/andy-heptio/contour:kubecon
+        imagePullPolicy: IfNotPresent
         name: envoy-initconfig
         command: ["contour"]
         args: ["bootstrap", "/config/contour.yaml"]
